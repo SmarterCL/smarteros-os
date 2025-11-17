@@ -8,27 +8,50 @@ Cualquier otra identidad (correo) está prohibida en código, repos, scripts, MC
 ---
 
 ## Scope cubierto
-- Google: People API, Contacts API, OAuth 2.0, Refresh Tokens, Workspace
-- MCP: Tools y Webhooks (mcp.smarterbot.cl)
-- n8n: Workflows y credenciales
-- Chatwoot: Automations y Webhooks
-- CI/CD: GitHub Actions y artefactos
-- Infra: `dkcompose`, Vault, Redpanda, Postgres, Redis
+- **Google Cloud:**
+  - People API, Contacts API, OAuth 2.0, Refresh Tokens, Workspace
+  - Vision API (OCR), Document AI, Gemini LLM (Vertex AI)
+  - Service Accounts (JSON keys para n8n workflows)
+- **Azure:**
+  - Azure AD (Microsoft Identity Platform) para login corporativo
+  - Azure Container Apps (n8n deployment)
+  - Azure Key Vault (alternativa a HashiCorp Vault)
+  - Azure Cognitive Services (Form Recognizer, Computer Vision)
+- **GitHub:**
+  - GitHub Actions (CI/CD)
+  - GitHub API (issues, PRs, repos)
+  - Personal Access Tokens (PATs) en workflows n8n
+- **MCP:** Tools y Webhooks (mcp.smarterbot.cl)
+- **n8n:** Workflows, credenciales multi-cloud, secrets en Vault
+- **Chatwoot:** Automations y Webhooks
+- **Infra:** `dkcompose`, Vault, Redpanda, Postgres, Redis
 
 ## Reglas
-- Permitido: solo `smarterbotcl@gmail.com` como identidad Google en credenciales y referencias.
-- Prohibido: cualquier otra dirección de correo en:
-  - nombres de variables, valores de variables, comentarios, docs, commits, issues, PRs, logs.
-- Credenciales Google (obligatorias para MCP):
-  - `GOOGLE_CLIENT_ID`
-  - `GOOGLE_CLIENT_SECRET`
-  - `GOOGLE_REFRESH_TOKEN`
+- **Identidad única permitida:** `smarterbotcl@gmail.com` en **todos los clouds**:
+  - Google: OAuth 2.0, Service Accounts con dominio `@smarterbot.cl` (alias de `smarterbotcl@gmail.com`)
+  - Microsoft: cuenta Azure AD asociada a `smarterbotcl@gmail.com` (login corporativo)
+  - GitHub: usuario `smarterbotcl` con email `smarterbotcl@gmail.com`
+- **Prohibido:** cualquier otra dirección de correo en:
+  - nombres de variables, valores de variables, comentarios, docs, commits, issues, PRs, logs
+  - credenciales de Azure Service Principal, GitHub PATs, Google Service Accounts
+- **Credenciales Google (obligatorias para MCP):**
+  - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`
   - `GOOGLE_REDIRECT_URI=https://mcp.smarterbot.cl/oauth2/callback`
-- Almacenamiento de secretos:
-  - Nunca en Git/repo/commits; solo `.env` en VPS (temporal) y luego Vault.
-- Etiquetado RAG en runtime y en artefactos:
-  - Var de entorno `RAG_IDENTITY=smarterbotcl@gmail.com` en servicios que interactúan con Google.
-  - Incluir `[RAG-AUDIT:SMARTERBOTCL]` en logs relevantes, headers de eventos, o metadatos cuando aplique.
+- **Credenciales Azure (obligatorias para n8n en ACA):**
+  - Azure Service Principal con Client ID + Secret asociado a tenant de `smarterbotcl@gmail.com`
+  - Almacenado en Vault: `secret/n8n/azure`
+- **Credenciales GitHub:**
+  - Personal Access Token (PAT) fine-grained del usuario `smarterbotcl`
+  - Scopes: `repo`, `workflow`, `issues:write`
+  - Almacenado en Vault: `secret/n8n/github`
+- **Almacenamiento de secretos:**
+  - Nunca en Git/repo/commits
+  - `.env` en VPS solo temporal (máx 24h) → migrar a Vault
+  - **Facebook login:** ELIMINADO (no usar API keys de Facebook)
+- **Etiquetado RAG en runtime:**
+  - Variable de entorno `RAG_IDENTITY=smarterbotcl@gmail.com` en todos los servicios
+  - Tag `[RAG-AUDIT:SMARTERBOTCL]` en logs de MCP, n8n, Chatwoot
+  - Header `X-SMOS-Identity: smarterbotcl@gmail.com` en requests entre servicios
 
 ## Auditoría diaria (RAG)
 - Código (paths):
@@ -44,10 +67,18 @@ Cualquier otra identidad (correo) está prohibida en código, repos, scripts, MC
   - `smarteros.audit.identity` → eventos de hallazgos
 
 ### Criterios de hallazgo
-- Si aparece cualquier correo distinto de `smarterbotcl@gmail.com` →
-  - Reportar: `RAG ALERT: Unauthorized identity reference detected.`
+- Si aparece cualquier correo distinto de `smarterbotcl@gmail.com` o alias `@smarterbot.cl` →
+  - **EXCEPTION:** correos de usuarios finales en Chatwoot (contactos legítimos)
+  - **EXCEPTION:** ejemplos en docs con placeholder `example@domain.com`
+- Si aparece Facebook App ID/Secret en código → `RAG ALERT: Facebook deprecated`
+- Si Service Account Google no pertenece a proyecto de `smarterbotcl@gmail.com` →
+  - Reportar: `RAG ALERT: Unauthorized Google Service Account detected.`
   - Severidad: Alta
   - Acción: bloqueo de deploy (si en CI) o ticket automático
+- Si Azure Service Principal no asociado a tenant de `smarterbotcl@gmail.com` →
+  - Reportar: `RAG ALERT: Unauthorized Azure identity detected.`
+- Si GitHub PAT no pertenece a usuario `smarterbotcl` →
+  - Reportar: `RAG ALERT: Unauthorized GitHub token detected.`
 
 ## Implementación recomendada
 
