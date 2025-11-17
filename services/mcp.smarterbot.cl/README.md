@@ -3,24 +3,35 @@
 Servicio HTTP mínimo que expone herramientas ("MCP tools") como endpoints REST y maneja webhooks desde Chatwoot.
 
 - `POST /tools/google.contacts.lookup` → Busca contacto en Google Contacts (People API)
-- `POST /webhook/chatwoot` → Recibe eventos de Chatwoot (message_created, conversation_created, etc.)
+- `POST /webhook/chatwoot` → Recibe eventos de Chatwoot (message_created, conversation_created, etc.) con verificación HMAC
 
 > Nota: Este servidor no implementa el wire del protocolo MCP-WebSocket; provee endpoints HTTP pensados para las automations de Chatwoot y para orquestación. Puedes envolverlo en un MCP formal más adelante si lo requieres.
 
-## Requisitos
+## Zero-Trust (Vault + AppRole)
 
-- Node.js 20+
-- Credenciales OAuth de Google Workspace con acceso a People API.
+El servidor arranca con `.env` mínimo y obtiene secretos desde Vault en runtime.
 
-Variables de entorno (`.env`):
-
+`.env` (mínimo):
 ```
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REFRESH_TOKEN=
-GOOGLE_REDIRECT_URI=
+VAULT_ADDR=https://vault.smarterbot.cl
+VAULT_ROLE_ID=...
+VAULT_SECRET_ID=...
+CHATWOOT_WEBHOOK_SECRET=...
 PORT=3100
 LOG_LEVEL=info
+RAG_IDENTITY=smarterbotcl@gmail.com
+```
+
+Secretos en Vault (KV v2):
+- `secret/mcp/google-oauth` → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`, `GOOGLE_REDIRECT_URI=https://mcp.smarterbot.cl/oauth2/callback`
+- `secret/mcp/chatwoot` → `CHATWOOT_API_TOKEN` (para usos futuros desde MCP)
+- `secret/mcp/n8n` → `N8N_API_KEY`
+
+Política Vault sugerida (`mcp`):
+```
+path "secret/data/mcp/*" {
+  capabilities = ["read", "list"]
+}
 ```
 
 ## Uso local
@@ -30,51 +41,27 @@ cd services/mcp.smarterbot.cl
 cp .env.example .env
 pnpm i --ignore-scripts
 pnpm dev
-# GET http://localhost:3100/health → { ok: true }
+# GET http://localhost:3100/health → { status: 'ok', service: 'mcp-smarterbot' }
 ```
 
-Probar el tool:
-
+Probar tool:
 ```bash
 curl -s -X POST http://localhost:3100/tools/google.contacts.lookup \
   -H 'Content-Type: application/json' \
   -d '{ "email": "juan@example.com" }' | jq
 ```
 
+## Seguridad Webhook (Chatwoot → MCP)
+- Configura `CHATWOOT_WEBHOOK_SECRET` en `.env` (no en Git).
+- Chatwoot debe firmar el body con HMAC-SHA256.
+- MCP valida `X-Chatwoot-Signature` antes de procesar. Si no coincide → 401.
+
 ## Despliegue en VPS (Dokploy)
-
-Puedes ejecutar este servicio como contenedor básico (ejemplo):
-
-```bash
-# Dockerfile mínimo (opcional)
-# FROM node:20-alpine
-# WORKDIR /app
-# COPY . .
-# RUN npm i --omit=dev
-# EXPOSE 3100
-# CMD ["node","server.js"]
-
-# docker compose (ejemplo rápido)
-# services:
-#   mcp:
-#     image: node:20-alpine
-#     working_dir: /app
-#     command: node server.js
-#     ports: ["3100:3100"]
-#     volumes:
-#       - ./:/app
-#     environment:
-#       - PORT=3100
-#       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-#       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-#       - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
-```
-
-Luego, apúntalo en Traefik como `mcp.smarterbot.cl` si deseas exponerlo.
+- Compose: `dkcompose/mcp.smarterbot.cl.yml` (Traefik + TLS, redes pública/interna)
+- Deploy: `scripts/smos deploy mcp`
 
 ## Chatwoot Automations
-
-Importa `docs/chatwoot-smarteros-automation.json` y ajusta URLs si es necesario.
+Importa `docs/chatwoot-smarteros-automation.json`.
 
 - Enriquecimiento Google Contacts al crear conversación (WhatsApp)
 - Clasificación de intención (placeholder)

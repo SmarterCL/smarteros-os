@@ -1,21 +1,22 @@
 import { google } from 'googleapis'
+import { getSecrets } from './secrets.js'
 
 function getOAuth2Client() {
-  const {
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REFRESH_TOKEN,
-    GOOGLE_REDIRECT_URI,
-  } = process.env
-  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_REFRESH_TOKEN) {
-    throw new Error('Faltan GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/GOOGLE_REFRESH_TOKEN en el entorno')
+  const { google: googleSecrets } = getSecrets()
+  const CLIENT_ID = googleSecrets?.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID
+  const CLIENT_SECRET = googleSecrets?.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
+  const REFRESH_TOKEN = googleSecrets?.GOOGLE_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN
+  const REDIRECT_URI = googleSecrets?.GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI
+
+  if (!CLIENT_ID || !CLIENT_SECRET || !REFRESH_TOKEN) {
+    throw new Error('Faltan credenciales de Google (Vault/env)')
   }
   const oauth2Client = new google.auth.OAuth2(
-    GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI || 'urn:ietf:wg:oauth:2.0:oob'
+    CLIENT_ID,
+    CLIENT_SECRET,
+    REDIRECT_URI || 'urn:ietf:wg:oauth:2.0:oob'
   )
-  oauth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN })
+  oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN })
   return oauth2Client
 }
 
