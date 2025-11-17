@@ -19,9 +19,16 @@ Integración bidireccional entre **Chatwoot** (inbox multi-canal) y **n8n** (wor
 
 **Stack:**
 - **Chatwoot:** `chatwoot.smarterbot.cl` (multi-tenant, cada tenant tiene su propio `inbox_id` y `account_id`)
+  - **Ubicación:** Docker en Hostinger/Dokploy, NO en repositorio (solo specs + integración)
+  - **Arquitectura:** 3 caminos de integración (API nativa, Webhooks→n8n→MCP, MCP directo)
 - **n8n:** `n8n.smarterbot.cl` (Azure Container Apps, Postgres backend, autenticación con Vault)
 - **MCP Service:** `mcp.smarterbot.cl` (intermediario para operaciones complejas, autenticación HMAC)
 - **Dashboard:** `app.smarterbot.cl/settings` (configuración webhook_url por tenant)
+
+**Referencias de arquitectura:**
+- `smarteros-specs/services/chatwoot.yml` - Spec completo del servicio Chatwoot
+- `app.smarterbot.cl/lib/chatwoot-client.ts` - Cliente API nativo TypeScript
+- `docs/MULTI-CLOUD-ARCHITECTURE.md` - Arquitectura multi-cloud completa
 
 ---
 
