@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SMOS_ENV_FILE=${SMOS_ENV_FILE:-"$HOME/.smos.env"}
+
+function usage() {
+  cat <<EOF
+SmarterOS CLI (smos)
+
+Usage:
+  smos target <name> <ssh_host>
+  smos targets
+  smos deploy <service>
+  smos up <service>
+  smos down <service>
+  smos status [target]
+  smos logs <service> [target]
+
+Targets are stored in: $SMOS_ENV_FILE
+
+Services:
+  redpanda      Start Redpanda + Console
+  vault         Start Vault (UI)
+  mcp           Start MCP Server (n8n-mcp-server stack)
+
+Examples:
+  smos target production root@smarterbot.cl
+  smos deploy redpanda
+  smos deploy vault
+  smos status
+  smos logs vault
+EOF
+}
+
+function ensure_env() {
+  if [[ ! -f "$SMOS_ENV_FILE" ]]; then
+    touch "$SMOS_ENV_FILE"
+  fi
+}
+
+function cmd_target() {
+  ensure_env
+  local name=${1:-}
+  local host=${2:-}
+  if [[ -z "$name" || -z "$host" ]]; then
+    echo "Usage: smos target <name> <ssh_host>" >&2
+    exit 1
+  fi
+  grep -v "^$name=" "$SMOS_ENV_FILE" 2>/dev/null >"$SMOS_ENV_FILE.tmp" || true
+  echo "$name=$host" >>"$SMOS_ENV_FILE.tmp"
+  mv "$SMOS_ENV_FILE.tmp" "$SMOS_ENV_FILE"
+  echo "Saved target '$name' as '$host'"
+}
+
+function cmd_targets() {
+  ensure_env
+  if [[ ! -s "$SMOS_ENV_FILE" ]]; then
+    echo "No targets configured. Use: smos target production root@host"
+    exit 0
+  fi
+  cat "$SMOS_ENV_FILE"
+}
+
+function get_host() {
+  ensure_env
+  local name=${1:-production}
+  local line
+  line=$(grep "^$name=" "$SMOS_ENV_FILE" 2>/dev/null || true)
+  if [[ -z "$line" ]]; then
+    echo "No target named '$name'. Configure with: smos target $name user@host" >&2
+    exit 1
+  fi
+  echo "${line#*=}"
+}
+
+function ssh_do() {
+  local host=$1
+  shift
+  ssh -o StrictHostKeyChecking=no "$host" "$@"
+}
+
+function cmd_deploy() {
+  local service=${1:-}
+  local target=${TARGET:-production}
+  local host
+  host=$(get_host "$target")
+  case "$service" in
+    redpanda)
+      ssh_do "$host" "cd /opt/dokploy/dkcompose && docker compose up -d redpanda redpanda-console"
+      ;;
+    vault)
+      ssh_do "$host" "cd /opt/dokploy/dkcompose && docker compose up -d vault"
+      ;;
+    mcp)
+      ssh_do "$host" "cd /opt/dokploy/dkcompose && docker compose -f mcp.smarterbot.cl.yml up -d mcp"
+      ;;
+    *)
+      echo "Unknown service: $service" >&2
+      exit 1
+      ;;
+  esac
+}
+
+function cmd_status() {
+  local target=${1:-${TARGET:-production}}
+  local host
+  host=$(get_host "$target")
+  ssh_do "$host" "docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}' | ( echo -e 'NAME\tIMAGE\tSTATUS\tPORTS'; grep -E 'smarter-redpanda|smarter-redpanda-console|smarter-vault|n8n-mcp-server' || true )"
+}
+
+function cmd_logs() {
+  local service=${1:-}
+  local target=${2:-${TARGET:-production}}
+  if [[ -z "$service" ]]; then
+    echo "Usage: smos logs <service> [target]" >&2
+    exit 1
+  fi
+  local host container
+  host=$(get_host "$target")
+  case "$service" in
+    redpanda) container=smarter-redpanda ;;
+    redpanda-console) container=smarter-redpanda-console ;;
+    vault) container=smarter-vault ;;
+    mcp) container=n8n-mcp-server ;;
+    *) echo "Unknown service: $service" >&2; exit 1 ;;
+  esac
+  ssh_do "$host" "docker logs --tail 200 -f $container"
+}
+
+case "${1:-}" in
+  target)
+    shift; cmd_target "$@" ;;
+  targets)
+    shift; cmd_targets "$@" ;;
+  deploy)
+    shift; cmd_deploy "$@" ;;
+  up)
+    shift; cmd_deploy "$@" ;;
+  down)
+    echo "Use docker compose commands on the server to stop services" ;;
+  status)
+    shift; cmd_status "$@" ;;
+  logs)
+    shift; cmd_logs "$@" ;;
+  -h|--help|help|'')
+    usage ;;
+  *)
+    echo "Unknown command: $1" >&2
+    usage
+    exit 1
+    ;;
+esac
