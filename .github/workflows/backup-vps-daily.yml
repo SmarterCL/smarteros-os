@@ -1,9 +1,9 @@
 name: Backup VPS Diario
 
 on:
-  schedule:
-    # Todos los días a las 2:00 AM (UTC-3 Chile = 5:00 AM UTC)
-    - cron: '0 5 * * *'
+  # schedule:
+  #   # Todos los días a las 2:00 AM (UTC-3 Chile = 5:00 AM UTC)
+  #   - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
       vps_id:
