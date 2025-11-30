@@ -1,661 +1,452 @@
-# SmarterOS - Arquitectura Moderna 2025
+# =========================================================
+# SMARTEROS - ARQUITECTURA MODERNA 2025
+# =========================================================
 
-**Fecha:** 2025-11-30  
-**Versión:** v2025.11.30  
-**Estado:** Production Ready (87% completo)
+## 🎯 Visión General
 
----
+SmarterOS es una **plataforma de conectividad cognitiva** que permite a empresas conectar sus APIs existentes y conversar con ellas de forma natural, sin necesidad de SDKs ni integraciones complejas.
 
-## 🎯 Filosofía de Diseño
-
-SmarterOS no es un SaaS tradicional con apps aisladas. Es un **Sistema Operativo Digital** que funciona como **capa de conectividad cognitiva** entre empresas y sus sistemas existentes.
-
-### Principios Fundamentales
-
-1. **Sin código para conectar** - Las empresas exponen sus APIs, no suben código
-2. **Conversación lado a lado** - Los modelos de IA hablan directamente con las APIs empresariales
-3. **Tenant por diseño** - Cada empresa es un tenant con su propio espacio aislado
-4. **Módulos como reglas** - El sistema opera con reglas n8n, no con módulos rígidos
-5. **MCP como protocolo** - Model Context Protocol es el lenguaje común
+**No es un SaaS tradicional. Es un sistema operativo de negocio.**
 
 ---
 
-## 🏗️ Arquitectura de Tres Capas
+## 🏗️ Arquitectura de Capas
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    CAPA 0: IDENTITY & ZERO TRUST                │
-│  Cloudflare One + Access + AI Controls                          │
-│  ├─ OAuth2 (Google, GitHub, Slack)                             │
-│  ├─ Phone Auth (WhatsApp, Telegram)                            │
-│  ├─ Policies + SSO                                              │
-│  └─ AI Controls + Audit                                         │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                    CAPA 1: MCP COGNITIVO                        │
-│  mcp.smarterbot.cl - SmarterMCP Infrastructure                  │
-│  ├─ MCP Server Portal (Cloudflare Access)                      │
-│  ├─ Capability Registry por tenant                             │
-│  ├─ Semantic mapping (intención → endpoint)                    │
-│  └─ Orquestación de llamadas multi-API                         │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                  CAPA 2: API GATEWAY                            │
-│  api.smarterbot.store - Transactional Layer                     │
-│  ├─ Tenant API Registry                                         │
-│  ├─ Auth normalization (API keys, OAuth, Bearer)               │
-│  ├─ Rate limiting + Logging                                     │
-│  └─ Proxy seguro hacia APIs empresariales                      │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                  CAPA 3: APIS EMPRESARIALES                     │
-│  On-premise, Cloud, SaaS (donde vivan)                          │
-│  ├─ ERP custom                                                   │
-│  ├─ E-commerce                                                   │
-│  ├─ CRM propio                                                   │
-│  └─ Sistemas legacy                                              │
-└─────────────────────────────────────────────────────────────────┘
-```
+### Capa 0: Identity & Zero Trust (Cloudflare One)
 
----
+- **Cloudflare Access** protege todos los servicios críticos
+- **AI Controls** para políticas de uso de IA
+- **MCP Server Portals** registrados como aplicaciones SaaS
+- **Linked Apps** para OAuth2 entre servicios
 
-## 🌐 Dominios y Responsabilidades
-
-### mcp.smarterbot.cl - Cerebro Conectivo
-
-**Propósito:** Portal cognitivo que mapea conversaciones a capabilities
-
-**Tecnología:**
-- MCP Server registrado en Cloudflare One
-- Protegido por Cloudflare Access (SSO/OIDC)
-- AI Controls para auditoría y políticas
-- Linked Apps para integración OAuth
-
-**Responsabilidades:**
-- Recibir instrucciones de modelos de IA
-- Identificar tenant y permisos
-- Resolver capabilities a endpoints
-- Orquestar llamadas multi-sistema
-- Normalizar respuestas
-
-**Ejemplo de flujo:**
-```
-ChatGPT: "Lista las órdenes pendientes de Empresa X"
-  ↓
-mcp.smarterbot.cl identifica:
-  - tenant: empresa-x-uuid
-  - capability: orders.list
-  - backing endpoint: GET /orders?status=pending
-  ↓
-Llama a api.smarterbot.store
-```
-
-**Referencias Cloudflare:**
-- [MCP Server Portal](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/linked-apps/)
-- [Access for SaaS](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/saas-apps/)
+**Documentación:**
+- [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/)
 - [AI Controls](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/)
+- [MCP Server Portal](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/linked-apps/)
 
----
+### Capa 1: MCP (Cognitive Layer) - `mcp.smarterbot.cl`
 
-### api.smarterbot.store - Gateway Transaccional
+**Rol:** Cerebro conectivo del sistema
 
-**Propósito:** Capa de negocio que normaliza y ejecuta operaciones reales
+**Funciones:**
+- Recibe instrucciones de modelos de IA (ChatGPT, Claude, etc.)
+- Mapea intenciones → capabilities → endpoints
+- Gestiona contexto y state por tenant
+- Coordina llamadas multi-API
+- Normaliza respuestas
 
-**Tecnología:**
-- Self-hosted App detrás de Cloudflare Access
-- TypeScript + Next.js API Routes
-- Supabase para metadata
-- Cloudflare AI Gateway (opcional)
+**Módulos activos:**
+- `SmarterMCP` (tenant infrastructure)
+- `smarteros-mcp-cloudflare` (DNS automation + Cloudflare Access)
+- `mcp-capabilities` (registry de capacidades por tenant)
 
-**Responsabilidades:**
-- Registrar APIs de empresas
-- Gestionar credenciales (encriptadas)
-- Aplicar autenticación por API
-- Rate limiting y quotas
-- Logging y observabilidad
-- Proxy hacia sistemas reales
+**Protección:**
+- Cloudflare Access con OIDC/SSO
+- AI Controls para logging y políticas
+- Rate limiting por tenant
+
+### Capa 2: API Gateway (Business Layer) - `api.smarterbot.store`
+
+**Rol:** Capa transaccional y proxy inteligente
+
+**Funciones:**
+- Expone endpoints por tenant: `POST /tenant/{id}/orders/search`
+- Proxy seguro hacia APIs reales de empresas
+- Gestión de auth (API keys, OAuth, Bearer tokens)
+- Rate limiting y logging
+- Normalización de contratos API
 
 **Endpoints principales:**
 ```
-POST /api/tenant/create
-GET  /api/tenant/:id
-POST /api/tenant/activate-product
-POST /api/tenant/set-integration
-POST /api/tenant/:id/proxy/:capability
-GET  /api/system/info
+POST   /api/tenant/create
+GET    /api/tenant/:id
+POST   /api/tenant/activate-product
+POST   /api/tenant/set-integration
+POST   /api/tenant/provision-domain
+GET    /api/system/info
 ```
 
-**Ejemplo de proxy:**
-```
-POST /api/tenant/abc-123/proxy/orders.search
-  ↓
-api.smarterbot.store:
-  1. Valida tenant abc-123
-  2. Busca capability "orders.search"
-  3. Resuelve a api_endpoint real
-  4. Obtiene credenciales de api_credentials
-  5. Construye request a API de empresa:
-     POST https://empresa.com/api/v2/orders
-     Authorization: Bearer xyz...
-  6. Recibe respuesta
-  7. Normaliza formato
-  8. Retorna al MCP
-```
+**Protección:**
+- Cloudflare Access para self-hosted apps
+- JWT/Bearer tokens
+- AI Gateway opcional para llamadas a proveedores de IA
+
+### Capa 3: APIs de Empresas
+
+**Modelo:** Las empresas NO suben código a SmarterOS
+
+Las APIs viven donde la empresa quiera:
+- On-premise
+- Cloud privado
+- SaaS existente
+
+SmarterOS solo guarda:
+- Base URL
+- Esquema de autenticación
+- Metadata (OpenAPI/JSON Schema opcional)
 
 ---
 
 ## 🗄️ Modelo de Datos (Supabase)
 
-### Schema Multi-Tenant Core
+### Tenants
 
-#### tenants
 ```sql
-CREATE TABLE public.tenants (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    rut text UNIQUE NOT NULL,
+CREATE TABLE tenants (
+    id uuid PRIMARY KEY,
+    rut text UNIQUE,
     business_name text NOT NULL,
-    contact_email text NOT NULL,
-    clerk_user_id text,
-    
-    -- Nuevo: tipo de tenant
-    type text NOT NULL DEFAULT 'customer', -- 'infrastructure' | 'customer'
-    
+    contact_email text,
+    type text NOT NULL,  -- 'infrastructure' | 'customer'
     status text NOT NULL DEFAULT 'trial',
     plan text,
     primary_domain text,
     trial_expires_at timestamptz,
-    
-    services_enabled jsonb DEFAULT '{}'::jsonb,
-    notes jsonb DEFAULT '{}'::jsonb,
-    
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    services_enabled jsonb DEFAULT '{}',
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
 );
 ```
 
-**Tenants especiales:**
-- **SMARTERBOT** (type=infrastructure) - Tenant raíz del sistema
-- **SmarterMCP** (type=infrastructure) - Dueño de la capa cognitiva
-- **CLIENTE DEMO** (type=customer) - Tenant de prueba
+**Tenant especial:**
+- **SmarterMCP** (`type='infrastructure'`)
+  - RUT: `00.000.000-0`
+  - Email: `mcp@smarterbot.cl`
+  - Plan: `infrastructure`
+  - Dueño de la conectividad DNS y Cloudflare
 
----
+### API Providers (Nuevas tablas)
 
-#### tenant_products
 ```sql
-CREATE TABLE public.tenant_products (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    product_code text NOT NULL, -- 'chat' | 'erp' | 'automation'
-    status text NOT NULL DEFAULT 'trial',
-    plan text,
-    trial_expires_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, product_code)
-);
-```
-
----
-
-#### tenant_domains
-```sql
-CREATE TABLE public.tenant_domains (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    domain text NOT NULL,
-    subdomain text,
-    domain_type text NOT NULL DEFAULT 'primary',
-    verified boolean NOT NULL DEFAULT false,
-    is_active boolean NOT NULL DEFAULT true,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-```
-
----
-
-#### tenant_integrations
-```sql
-CREATE TABLE public.tenant_integrations (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    integration_type text NOT NULL,
-    external_id text,
-    external_ref jsonb,
-    is_active boolean NOT NULL DEFAULT true,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-```
-
----
-
-### Schema MCP Avanzado (Nuevo)
-
-#### api_providers
-```sql
-CREATE TABLE public.api_providers (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name text NOT NULL,
+-- Registro de APIs por empresa
+CREATE TABLE api_providers (
+    id uuid PRIMARY KEY,
+    tenant_id uuid REFERENCES tenants(id),
+    name text NOT NULL,  -- 'ERP', 'E-commerce', 'CRM'
     base_url text NOT NULL,
-    category text NOT NULL, -- 'erp' | 'payments' | 'ecommerce' | 'custom'
-    auth_type text NOT NULL, -- 'api_key' | 'bearer' | 'basic' | 'oauth2' | 'none'
-    created_by uuid,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    category text,  -- 'erp', 'payments', 'ecommerce', 'custom'
+    auth_type text,  -- 'api_key', 'bearer', 'oauth2', 'none'
+    created_at timestamptz DEFAULT now()
 );
-```
 
-#### api_credentials
-```sql
-CREATE TABLE public.api_credentials (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    api_provider_id uuid NOT NULL REFERENCES api_providers(id) ON DELETE CASCADE,
-    encrypted_secret text NOT NULL, -- Vault o pg_crypto
-    metadata jsonb, -- scopes, audience, refresh_token, etc.
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+-- Credenciales (solo server-side)
+CREATE TABLE api_credentials (
+    id uuid PRIMARY KEY,
+    api_provider_id uuid REFERENCES api_providers(id),
+    encrypted_secret text NOT NULL,
+    metadata jsonb,  -- scopes, audience, refresh_token, etc.
+    created_at timestamptz DEFAULT now()
 );
-```
 
-#### api_endpoints
-```sql
-CREATE TABLE public.api_endpoints (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    api_provider_id uuid NOT NULL REFERENCES api_providers(id) ON DELETE CASCADE,
+-- Endpoints específicos
+CREATE TABLE api_endpoints (
+    id uuid PRIMARY KEY,
+    api_provider_id uuid REFERENCES api_providers(id),
     path text NOT NULL,
-    method text NOT NULL, -- 'GET' | 'POST' | 'PUT' | 'DELETE'
-    semantic_name text NOT NULL, -- 'list_orders' | 'get_customer' | 'update_stock'
+    method text NOT NULL,  -- GET, POST, PUT, DELETE
+    semantic_name text,  -- 'orders.list', 'customers.get'
     schema_in jsonb,
     schema_out jsonb,
-    enabled boolean NOT NULL DEFAULT true,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    enabled boolean DEFAULT true
 );
-```
 
-#### mcp_capabilities
-```sql
-CREATE TABLE public.mcp_capabilities (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    capability_name text NOT NULL, -- 'orders.search' | 'stock.sync'
-    backing_endpoint_id uuid NOT NULL REFERENCES api_endpoints(id),
+-- Capabilities (lo que MCP expone)
+CREATE TABLE mcp_capabilities (
+    id uuid PRIMARY KEY,
+    tenant_id uuid REFERENCES tenants(id),
+    capability_name text NOT NULL,  -- 'orders.search', 'stock.sync'
+    backing_endpoint_id uuid REFERENCES api_endpoints(id),
     description text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, capability_name)
+    created_at timestamptz DEFAULT now()
 );
 ```
 
-#### cloudflare_linked_apps
+### Cloudflare Integration
+
 ```sql
-CREATE TABLE public.cloudflare_linked_apps (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+CREATE TABLE cloudflare_linked_apps (
+    id uuid PRIMARY KEY,
+    tenant_id uuid REFERENCES tenants(id),
     access_app_id_mcp text,
     access_app_id_api text,
     policy_id_ai_controls text,
     team_name text,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    created_at timestamptz DEFAULT now()
 );
 ```
 
 ---
 
-## 🔄 Flujos Completos
+## 🔄 Flujos Clave
 
 ### 1. Onboarding de Empresa
 
-```
-1. Admin entra a mcp.smarterbot.cl
-   ↓
-2. Cloudflare Access valida identidad (SSO)
-   ↓
+**Pasos:**
+1. Admin entra a `mcp.smarterbot.cl`
+2. Pasa Cloudflare Access (SSO/OIDC)
 3. Crea tenant en Supabase
-   → rut, nombre, email
-   ↓
-4. En api.smarterbot.store registra primera API:
-   → Nombre: "ERP Principal"
-   → Base URL: https://empresa.com/api
-   → Auth: Bearer Token
-   → (Opcional) OpenAPI/JSON Schema
-   ↓
-5. Sistema introspecciona y crea api_endpoints:
-   → GET /orders → "list_orders"
-   → GET /customers/:id → "get_customer"
-   ↓
-6. SmarterMCP crea mcp_capabilities:
-   → "orders.list" → backed by "list_orders"
-   → "customer.get" → backed by "get_customer"
-   ↓
-7. Empresa lista para conversación
+4. Registra primera API:
+   - Nombre: "ERP Empresa X"
+   - URL: `https://erp.empresax.com/api`
+   - Auth: `Bearer token`
+5. Sistema introspecciona y crea `api_endpoints`
+6. SmarterMCP genera `mcp_capabilities` automáticamente
+7. ✅ Empresa puede conversar con su API
+
+### 2. Conversación Real (Cognitive Flow)
+
+**Flujo:**
+1. Modelo de IA consulta `mcp.smarterbot.cl`
+2. SmarterMCP mapea:
+   - Usuario → tenant
+   - Intención → capability (`orders.search`)
+3. MCP llama a `api.smarterbot.store`:
+   ```
+   POST /tenant/{id}/proxy/orders.search
+   ```
+4. API Gateway:
+   - Busca `api_endpoints` del tenant
+   - Recupera credenciales
+   - Llama a la API real de la empresa
+5. Respuesta vuelve normalizada
+6. Cloudflare audita todo el flujo (Access + AI Controls)
+
+---
+
+## 🌐 Dominios y Roles
+
+| Dominio | Rol | Protección | Tecnología |
+|---------|-----|------------|------------|
+| `mcp.smarterbot.cl` | Cerebro cognitivo | Cloudflare Access (MCP Portal) | Node.js + TypeScript |
+| `api.smarterbot.store` | Gateway transaccional | Cloudflare Access (Self-hosted) | Next.js API Routes |
+| `login.smarterbot.store` | Identity & Auth | Supabase Auth + Cloudflare | Next.js + Supabase |
+| `app.smarterbot.store` | Dashboard clientes | Cloudflare Access | Next.js + React |
+| `smarterbot.cl` | Landing público | Cloudflare Proxy | Static/Next.js |
+| `odoo.smarterbot.cl` | ERP | Cloudflare + Dokploy | Odoo 19 |
+| `chatwoot.smarterbot.cl` | CRM/Chat | Cloudflare + Dokploy | Chatwoot |
+| `n8n.smarterbot.cl` | Automation | Cloudflare + Dokploy | n8n |
+
+---
+
+## 📦 Módulos y Repositorios
+
+### Core Repositories
+
+| Repo | Descripción | Estado |
+|------|-------------|--------|
+| `smarteros-os` | Specs y documentación central | ✅ Activo |
+| `smarteros-agents` | MCP + workflows + agentes | ✅ Activo |
+| `smarteros-mcp-cloudflare` | DNS automation + Access | ✅ Activado |
+| `smarteros-tenant-api` | API Gateway (TypeScript) | ✅ Listo deploy |
+| `login.smarterbot.store` | Identity portal | ✅ Producción |
+| `app.smarterbot.store` | Dashboard | ✅ Producción |
+
+### Infrastructure
+
+```
+/root/smarteros-core/          # Core engine
+/root/smarteros-api-gateway/   # API Gateway implementation
+/root/smarteros-mcp-cloudflare/# Cloudflare MCP module
+/root/smarteros-os-docs/       # Documentación
+/root/smarteros-modules/       # Módulos adicionales
 ```
 
 ---
 
-### 2. Conversación Real (Lado a Lado)
+## 🔧 Componentes Técnicos
 
-```
-Usuario: "¿Cuántas órdenes tengo pendientes en Empresa X?"
-  ↓
-Modelo IA → mcp.smarterbot.cl
-  ↓
-SmarterMCP:
-  1. Identifica tenant_id (Empresa X)
-  2. Mapea intención → capability: "orders.list"
-  3. Busca backing_endpoint_id
-  4. Construye request:
-     POST api.smarterbot.store/tenant/{id}/proxy/orders.list
-     Body: { "status": "pending" }
-  ↓
-API Gateway (api.smarterbot.store):
-  1. Valida tenant_id
-  2. Busca api_provider de ese tenant
-  3. Obtiene api_credentials
-  4. Resuelve endpoint real:
-     GET https://empresa.com/api/orders?status=pending
-  5. Aplica autenticación (Bearer xyz...)
-  6. Ejecuta request
-  7. Recibe respuesta:
-     { "orders": [...], "total": 23 }
-  8. Normaliza formato
-  9. Retorna a MCP
-  ↓
-SmarterMCP:
-  1. Procesa respuesta
-  2. Genera resumen legible:
-     "Tienes 23 órdenes pendientes"
-  3. Retorna al modelo
-  ↓
-Modelo IA → Usuario
-```
+### MCP Cloudflare Module
 
-**Observabilidad:**
-- Cloudflare Access audita cada request
-- AI Controls registra uso de IA
-- API Gateway logea llamadas
-- Supabase guarda metadata
-
----
-
-### 3. Provisioning Automático de Tenant
-
-```
-Store (smarterbot.store):
-  Cliente crea cuenta
-  ↓
-login.smarterbot.store:
-  OAuth2 (Google/GitHub) + Phone
-  ↓
-Supabase Auth:
-  Webhook → n8n.smarterbot.cl/webhook/auth-signup
-  ↓
-n8n workflow (n8n_onboarding_smarteros):
-  1. POST api.smarterbot.store/api/tenant/create
-     → Crea tenant en Supabase
-  2. Recibe tenant_id
-  3. Crea inbox en Chatwoot
-     → Guarda external_id
-  4. Crea company en Odoo
-     → Guarda external_id
-  5. Crea project en n8n
-     → Guarda external_id
-  6. POST api.smarterbot.store/api/tenant/set-integration
-     → type: chatwoot, external_id: inbox_id
-     → type: odoo, external_id: company_id
-     → type: n8n, external_id: project_id
-  7. Envía WhatsApp/Telegram:
-     "¡Bienvenido! Tu cuenta está lista"
-  8. Marca provisioning_queue: done
-  ↓
-Cliente:
-  Accede a app.smarterbot.store
-  Ve productos activos
-  Entra a Chatwoot/Odoo/n8n
-```
-
----
-
-## 🛠️ Módulos y Componentes
-
-### smarteros-tenant-api
-**Ubicación:** `/root/smarteros-tenant-api`  
-**Estado:** ✅ Completo  
-**Tecnología:** TypeScript + Next.js API Routes + Supabase
-
-**Endpoints:**
-- `POST /api/tenant/create` - Crear tenant
-- `GET /api/tenant/:id` - Obtener tenant
-- `POST /api/tenant/activate-product` - Activar producto
-- `POST /api/tenant/set-integration` - Registrar integración
-- `GET /api/system/info` - Estado del sistema
-
-**Deploy:** Vercel (pendiente)
-
----
-
-### smarteros-mcp-cloudflare
-**Ubicación:** `/root/smarteros-mcp-cloudflare`  
-**Estado:** ✅ Completo (pre-activación)  
-**Tecnología:** TypeScript + Node.js + Cloudflare API
+**Ubicación:** `/root/smarteros-mcp-cloudflare`
 
 **Funciones:**
-- `createTenantSubdomain(tenantId, subdomain)` - Crear DNS
-- `deleteTenantSubdomain(tenantId)` - Eliminar DNS
-- `validateDomain(domain)` - Validar formato
-- `testAccessConnection()` - Test Cloudflare Access
-- `listPolicies()` - Listar políticas AI
+```typescript
+class CloudflareMCP {
+  async createTenantSubdomain(request: SubdomainRequest): Promise<SubdomainResponse>
+  async deleteTenantSubdomain(tenantId: string, subdomain: string): Promise<SubdomainResponse>
+  async validateDomain(subdomain: string, domain: string): Promise<DomainValidation>
+  async listTenantDomains(tenantId: string): Promise<TenantDomain[]>
+  async healthCheck(): Promise<{ healthy: boolean; message: string }>
+}
+```
 
-**Activación:** Requiere `CLOUDFLARE_API_TOKEN`
+**Configuración:**
+```env
+CLOUDFLARE_API_TOKEN=***
+CLOUDFLARE_ZONE_ID=2cd9e927c040cd0351c908068f81b069
+CLOUDFLARE_ZONE_ID_STORE=81f7371c0a9d1e1a6fa9f6ff77eac8b0
+PRIMARY_DOMAIN=smarterbot.cl
+```
 
----
-
-### smarteros-agents
-**Ubicación:** GitHub SmarterCL/smarteros-agents  
-**Estado:** 🚧 En desarrollo  
-**Tecnología:** TypeScript + MCP Protocol
-
-**Contenido:**
-- Agentes conversacionales
-- Reglas n8n precocinadas
-- Templates de workflows
-- manifest.json con módulos
-
----
-
-### smarteros-cli
-**Ubicación:** `/root/smarteros-cli`  
-**Estado:** 🚧 En desarrollo  
-**Tecnología:** Node.js CLI
-
-**Comandos:**
+**Activación:**
 ```bash
-smarteros sync --tenant=<id>
-smarteros tenant create <rut> <name> <email>
-smarteros domain create <subdomain> --tenant=<id>
-smarteros rules install --tenant=<id>
-smarteros mcp cloudflare test
+cd /root/smarteros-mcp-cloudflare
+./activate.sh
 ```
 
 ---
 
 ## 📊 Estado del Sistema (Telemetría)
 
-**Fecha:** 2025-11-30  
-**Progreso:** 87% completo
+### Infraestructura VPS
 
-### Infraestructura
-- ✅ 26 contenedores activos
-- ✅ 11 dominios configurados
-- ✅ Caddy reverse proxy operativo
-- ✅ Dokploy orchestration activo
-- ✅ SSL automático funcionando
+- **26 contenedores activos**
+- **11 dominios configurados**
+- **9 productos**
+- **3 tenants** (SMARTERBOT, SmarterMCP, DEMO)
+- **197 MB backup externo**
+- **87% del sistema completo**
 
-### Datos
-- ✅ 3 tenants activos
-  - SMARTERBOT (root)
-  - CLIENTE DEMO (trial)
-  - SmarterMCP (infrastructure)
-- ✅ 9 productos asignados (3 por tenant)
-- ✅ 6 integraciones configuradas
-- ✅ Schema Supabase completo
+### Servicios Core
 
-### Backup
-- ✅ 197 MB backup externo
-- ✅ Accesible en: https://smarterbot.cl/nov.zip
-- ✅ Última actualización: 2025-11-30
+| Servicio | Estado | URL | Versión |
+|----------|--------|-----|---------|
+| Caddy | ✅ Running | - | 2.8.4 |
+| Dokploy | ✅ Running | dokploy.smarterbot.cl | Latest |
+| Odoo | ✅ Running | odoo.smarterbot.cl | 19.0 |
+| Chatwoot | ✅ Running | chatwoot.smarterbot.cl | Latest |
+| n8n | ✅ Running | n8n.smarterbot.cl | 1.121.3 |
+| Supabase | ✅ Cloud | rjfcmmzjlguiititkmyh.supabase.co | Cloud |
+| Cloudflare | ✅ Active | 2 zones | API v4 |
 
 ---
 
-## ✅ 4 Pasos Pendientes para Completar
+## ✅ Completado (2025-11-30)
+
+- [x] Arquitectura multi-tenant (Supabase)
+- [x] API Gateway (5 endpoints TypeScript)
+- [x] MCP Cloudflare (DNS automation)
+- [x] Cloudflare Access configurado
+- [x] 26 contenedores en producción
+- [x] Login portal operativo
+- [x] Dashboard clientes
+- [x] Documentación completa (+3.300 líneas)
+- [x] Backup system (smarterbot.cl/nov.zip)
+
+---
+
+## 🚀 Próximos 4 Pasos
 
 ### 1. Deploy API a Vercel/Producción
+
 ```bash
 cd /root/smarteros-tenant-api
 npm install
 npm run build
-vercel login
-vercel link
 vercel deploy --prod
+```
 
-# Configurar env vars en Vercel:
+**Variables requeridas:**
+```
 SUPABASE_URL=https://rjfcmmzjlguiititkmyh.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=***
-NEXT_PUBLIC_SUPABASE_URL=***
+NEXT_PUBLIC_SUPABASE_URL=https://rjfcmmzjlguiititkmyh.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=***
 ```
 
----
-
 ### 2. Activar Cloudflare MCP
+
 ```bash
-# Obtener API Token de Cloudflare:
-# Permisos: Zone Read + DNS Write
-
-export CLOUDFLARE_API_TOKEN="tu_token_aquí"
-
 cd /root/smarteros-mcp-cloudflare
-npm install
-npm run build
-
-# Test
-node dist/index.js testAccessConnection
+export CLOUDFLARE_API_TOKEN=tLFHLAQnpmC0y9xfEVQhRQ0xISSCYohGdQRtJoHw
+./activate.sh
 ```
 
-**Configurar en Cloudflare One:**
-- Crear Access App para mcp.smarterbot.cl
-- Crear Access App para api.smarterbot.store
-- Habilitar AI Controls
-- Vincular como MCP Server Portal
-
----
-
 ### 3. Importar Workflow n8n
-**Workflow:** `n8n_onboarding_smarteros`
 
-**Pasos:**
-1. Entrar a https://n8n.smarterbot.cl
-2. Crear nuevo workflow
-3. Import from URL o JSON
-4. Configurar nodos:
-   - Webhook Trigger: `/webhook/auth-signup`
-   - Supabase Node: credenciales con SERVICE_ROLE_KEY
-   - HTTP Request: a api.smarterbot.store
-   - WhatsApp/Telegram: credenciales Meta/Bot
-5. Activar workflow
-
-**Endpoints:**
-- `https://n8n.smarterbot.cl/webhook/auth-signup`
-- `https://n8n.smarterbot.cl/webhook/chat-response`
-
----
+- Entrar a `n8n.smarterbot.cl`
+- Import JSON desde `/root/smarteros-agents/workflows/`
+- Conectar:
+  - Supabase (SERVICE_ROLE_KEY)
+  - Chatwoot API
+  - Odoo API
+  - Meta/Telegram
+- Activar cron (cada 1 minuto)
 
 ### 4. Conectar Store con API
+
 ```bash
-cd /root/smarteros-store # o smarterbot.store repo
-
-# Agregar env var:
-NEXT_PUBLIC_SMARTEROS_API_URL=https://api.smarterbot.cl
-
-# O si usas Vercel:
-NEXT_PUBLIC_SMARTEROS_API_URL=https://smarteros-tenant-api.vercel.app
-
-# Actualizar lib/api.ts:
-const API_URL = process.env.NEXT_PUBLIC_SMARTEROS_API_URL
-
-export async function createTenant(data) {
-  return fetch(`${API_URL}/api/tenant/create`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  })
-}
-
-# Deploy:
+cd /root/smarterbot.store
+echo "NEXT_PUBLIC_SMARTEROS_API_URL=https://api.smarterbot.store" >> .env.production
 npm run build
 vercel deploy --prod
 ```
 
 ---
 
-## 🎯 Roadmap
+## 📝 Diferencia con Modelo Tradicional
 
-### Completar Sistema (13% restante)
-- [ ] Deploy API a producción
-- [ ] Activar Cloudflare MCP
-- [ ] Importar workflows n8n
-- [ ] Conectar Store
+### ❌ Modelo Vercel + ChatGPT App (tradicional)
 
-### Q1 2025
-- [ ] Landing page comercial
-- [ ] Panel cliente premium
-- [ ] Integración pagos (Stripe/Transbank)
-- [ ] Motor IA por tenant
-- [ ] Marketplace integraciones
+- App aislada con ChatGPT embebido
+- Código custom por integración
+- SDKs y librerías específicas
+- Escalabilidad limitada
+- Sin multi-tenant real
 
-### Q2 2025
-- [ ] Webhooks real-time
-- [ ] API pública partners
-- [ ] SDK JS/Python
-- [ ] Extensiones Shopify/WooCommerce
-- [ ] Certificación SII Chile
+### ✅ Modelo SmarterOS (moderno)
+
+- **Capa de conectividad cognitiva** entre empresas y APIs
+- Empresas **no suben código**, solo exponen APIs existentes
+- **Conversación directa** con APIs mediante MCP
+- **Multi-tenant nativo** con aislamiento por empresa
+- **Escalabilidad horizontal** ilimitada
+- **Zero Trust** con Cloudflare Access
 
 ---
 
-## 🔗 Referencias Técnicas
+## 🎓 Conceptos Clave
 
-### Cloudflare
-- [Access for SaaS](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/saas-apps/)
-- [MCP Server Portal](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/linked-apps/)
+### MCP (Model Context Protocol)
+
+Protocolo que permite a modelos de IA interactuar con herramientas externas de forma estandarizada.
+
+**En SmarterOS:**
+- MCP traduce intenciones → acciones API
+- Sin necesidad de fine-tuning
+- Context awareness por tenant
+
+### Capabilities
+
+Abstracciones semánticas que mapean a endpoints reales:
+
+```
+Capability: "orders.search"
+  ↓
+Endpoint: GET /api/orders?status={status}
+  ↓
+API Real: https://erp.empresax.com/api/orders
+```
+
+### Zero Trust Architecture
+
+**Principio:** Nunca confiar, siempre verificar
+
+**Implementación:**
+- Cloudflare Access en todos los servicios
+- No hay "red interna confiable"
+- Autenticación por solicitud
+- Logging y auditoría completos
+
+---
+
+## 📖 Referencias
+
+- [Cloudflare One](https://developers.cloudflare.com/cloudflare-one/)
+- [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/)
 - [AI Controls](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/)
-- [HTTP Policies](https://developers.cloudflare.com/cloudflare-one/policies/gateway/http-policies/)
-
-### Supabase
-- [Row Level Security](https://supabase.com/docs/guides/auth/row-level-security)
-- [Auth Providers](https://supabase.com/docs/guides/auth/social-login)
-- [Edge Functions](https://supabase.com/docs/guides/functions)
-
-### MCP Protocol
-- [Model Context Protocol Spec](https://github.com/anthropics/mcp)
-- [MCP Servers](https://github.com/modelcontextprotocol/servers)
+- [MCP Server Portals](https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/linked-apps/)
+- [Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
 
 ---
 
-## 📞 Contacto
-
-**SmarterOS Chile**  
-Email: mcp@smarterbot.cl  
-Web: https://smarterbot.cl  
-Panel: https://app.smarterbot.store
-
----
+## 🏁 Versión del Sistema
 
 **Versión:** v2025.11.30  
-**Estado:** Production Ready (87% completo)  
-**Última actualización:** 2025-11-30 14:44 UTC
+**Estado:** Production Ready  
+**Actualizado:** 2025-11-30 14:57 UTC  
+
+---
+
+**SmarterOS** - El sistema operativo para negocios conectados 🚀
